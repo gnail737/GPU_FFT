@@ -1,15 +1,16 @@
 #include <jni.h>
 #include "GPU_FFT.h"
 
-#define DATA_SIZE 16
+#define DATA_SIZE 1024
+#define BIT_COUNT 10
 typedef unsigned int UINT;
 
 //input arrays has RGBA four-tuple per element, R is real component G is imaginary component, B,A are ignored
-static GLfloat inputArray[DATA_SIZE*4], testOutput[DATA_SIZE*4];
-static GLuint VAO, inputTexture, texWidth = DATA_SIZE, texHeight = 1;
+static GLfloat inputArray[DATA_SIZE*4];
+static GLuint VAO, inputTexture, permTexture, texWidth = DATA_SIZE, texHeight = 1;
 static Slab offScreenSlab;
 static Programs myProgram;
-
+static GLushort permArray[DATA_SIZE];
 
 //given a M (M<32) bits number(0 - 2^M) revert bits in place
 void reverseInPlace(UINT * input, UINT m)
@@ -24,17 +25,23 @@ void reverseInPlace(UINT * input, UINT m)
 
 	*input = out;
 }
-
+//pre-compute permutation array with 1024 elements
+void permuteArray(GLushort * intsArray) {
+	for (int i=0; i<DATA_SIZE; i++) {
+		UINT t = i;
+		reverseInPlace(&t, BIT_COUNT);
+		intsArray[i] = t;
+	}
+}
 void init() {
 	glDisable(GL_DEPTH_TEST);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	compileAllShaderPrograms(&myProgram);
 	//initialize input textures
 	for (int i=0; i<DATA_SIZE; i++) {
-		UINT t = i;
-		reverseInPlace(&t, 4);
-		inputArray[t*4] = 1.0f; //sin(2.0f*PI*(float)i/(float)16.0);  //sin(2.0f*PI*(float)t/(float)DATA_SIZE);
-		inputArray[t*4 + 3] = inputArray[t*4 + 2] = inputArray[t*4 + 1] = 0.0f;
+		//reverseInPlace(&t, BIT_COUNT);
+		inputArray[i*4] = sin(2.0f*PI*(float)i/128.0);  //sin(2.0f*PI*(float)t/(float)DATA_SIZE);
+		inputArray[i*4 + 3] = inputArray[i*4 + 2] = inputArray[i*4 + 1] = 0.0f;
 	}
 
 	inputTexture = createTextureWFloats(texWidth, texHeight, 4, inputArray);
@@ -53,15 +60,20 @@ void initSlabSurface() {
 	glViewport(0, 0, texWidth, texHeight);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glBindVertexArray(VAO);
-	GLint sampler = glGetUniformLocation(myProgram.DecimationInTime, "floatArray");
+
+	GLint sampler = glGetUniformLocation(myProgram.ScrambleStage, "floatArray");
+    GLint nBits = glGetUniformLocation(myProgram.ScrambleStage, "nbit");
 	glUniform1i(sampler, 0);
+    glUniform1i(nBits, BIT_COUNT);
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, inputTexture);
+
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-	glReadPixels(0, 0, texWidth, texHeight, GL_RGBA, GL_FLOAT, testOutput);
+	glReadPixels(0, 0, texWidth, texHeight, GL_RGBA, GL_FLOAT, inputArray);
 	for (int i=0; i<DATA_SIZE; i++) {
-		ALOGV(" %f - %f - %f - %f \n\n", testOutput[4*i], testOutput[4*i+1], testOutput[4*i+2], testOutput[4*i+3]);
+		ALOGV(" %f - %f - %f - %f \n\n", inputArray[4*i], inputArray[4*i+1], inputArray[4*i+2], inputArray[4*i+3]);
 	}
 
 }
@@ -80,7 +92,7 @@ void drawLoop() {
 	glActiveTexture(GL_TEXTURE1);
 
 	//start decimation in time loop
-	for (int i=0; i<4; i++) {
+	for (int i=0; i<BIT_COUNT; i++) {
 		glBindFramebuffer(GL_FRAMEBUFFER, offScreenSlab.Pong.FboHandle);
 		glViewport(0, 0, texWidth, texHeight);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -104,9 +116,9 @@ void drawLoop() {
         switchSurfaces(&offScreenSlab);
 	}
 
-	glReadPixels(0, 0, texWidth, texHeight, GL_RGBA, GL_FLOAT, testOutput);
+	glReadPixels(0, 0, texWidth, texHeight, GL_RGBA, GL_FLOAT, inputArray);
 	for (int i=0; i<DATA_SIZE; i++) {
-		ALOGV(" %f  -  %f  -  %f  -  %f \n\n", testOutput[4*i], testOutput[4*i+1], testOutput[4*i+2], testOutput[4*i+3]);
+		ALOGV(" %f  -  %f  -  %f  -  %f \n\n", inputArray[4*i], inputArray[4*i+1], inputArray[4*i+2], inputArray[4*i+3]);
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

@@ -10,6 +10,31 @@ bool checkGlError(const char* funcName) {
     return false;
 }
 
+GLuint createTextureWInts(GLsizei width, GLsizei height, int numComponents, GLushort *intArray)
+{
+	ALOGV("In createTextureWInts : width = %d height = %d", width, height);
+
+    GLuint textureHandle;
+    glGenTextures(1, &textureHandle);
+    glBindTexture(GL_TEXTURE_2D, textureHandle);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    switch (numComponents) {
+    case 1: glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, width, height, 0, GL_RED, GL_UNSIGNED_SHORT, intArray); break;
+    case 2: glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, width, height, 0, GL_RG, GL_UNSIGNED_SHORT, intArray); break;
+    case 3: glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16UI, width, height, 0, GL_RGB, GL_UNSIGNED_SHORT, intArray); break;
+    case 4: glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16UI, width, height, 0, GL_RGBA, GL_UNSIGNED_SHORT, intArray); break;
+    //case 5 is added for OffScreen RenderBuffer which only store color not Floating Point
+    case 5: glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, intArray); break;
+    default: ALOGE("Illegal slab format.");
+    }
+
+    return textureHandle;
+}
+
 GLuint createTextureWFloats(GLsizei width, GLsizei height, int numComponents, GLfloat *floatArray)
 {
 	ALOGV("In createTextureWFloats : width = %d height = %d", width, height);

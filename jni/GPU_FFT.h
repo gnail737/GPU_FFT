@@ -42,6 +42,7 @@ typedef struct ProgramsRec {
 
 Surface CreateSurface(GLsizei width, GLsizei height, int numComponents);
 GLuint createTextureWFloats(GLsizei width, GLsizei height, int numComponents, GLfloat *floatArray);
+GLuint createTextureWInts(GLsizei width, GLsizei height, int numComponents, GLushort *intArray);
 Slab CreateSlab(GLsizei width, GLsizei height, int numComponents);
 void switchSurfaces(Slab *slab);
 void CreateOffScreenVao(GLuint * vao);

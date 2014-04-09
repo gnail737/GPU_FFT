@@ -30,14 +30,38 @@ static const char VERTEX_FILL_SHADER[] =
 	L_(  texCoord = vPosition.zw; 						)
 	L_(} 												);
 **/
+
+/*
+ * void reverseInPlace(UINT * input, UINT m)
+{
+	UINT out = 0, scrape = 0, k;
+	for (k=m; k>=1; k--) {
+		//right shift till see the last bit
+		scrape =(*input)>>(k-1) & 0x00000001;
+		//out is assembled bit by bit from last to first
+	    out += ((scrape == 0) ?  0 : (1<<(m-k)));
+	}
+
+	*input = out;
+}
+ */
 static const char FRAGMENT_SHADER[] =
 	GL3ES_VERSION_SEPC
 	FP_PREC_SPEC
     FS_LAYOUT_LINE
-    //L_(in vec2 texCoord;														)
     L_(uniform sampler2D floatArray;											)
+    L_(uniform int nbit;														)
+    //L_(uniform sampler2D permArray;											)
+    L_(int reverseBits(int inputNum, int numBits) {              				)
+    L_(  int outNum = 0;														)
+    L_(  for (int i=numBits; i>=1; i--) {										)
+    L_(    outNum += (((inputNum>>(i-1)) & 1) * (1<<(numBits-i)));              )
+    L_(  }   																	)
+    L_(  return outNum; 														)
+    L_(}																		)
     L_(void main() { 															)
     L_(  ivec2 lookupInd = ivec2(gl_FragCoord.xy);                      		)
+    L_(  lookupInd.x = reverseBits(lookupInd.x, nbit);					   		)
     L_(  fragColor = vec4(texelFetch(floatArray, lookupInd, 0).rg, 0.0, 1.0);	)
     //L_(  fragColor = vec4(texture(floatArray, texCoord).rgb, 1.0); 			)
     L_(}                                                             			);
